@@ -7,9 +7,11 @@ else()
     message(STATUS "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
 endif()
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 message(STATUS "CMAKE_TOOLCHAIN_FILE: ${CMAKE_TOOLCHAIN_FILE}")
 
-project(sa_pico_can_bootloader2048      C CXX ASM)
+project(sa_pico_can_BootLoader C CXX ASM)
 set(DEVICE_FAMILY        STM32G4xx)
 set(DEVICE_NAME          STM32G431xx)
 set(DEVICE_FULL_NAME     STM32G431KBTx)
