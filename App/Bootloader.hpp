@@ -8,7 +8,7 @@
 #include "tim.h"
 #include "base_device.hpp"
 #include "main.h"
-#include "../Ext_libs/flash_driver/flash_driver.h"
+#include "flash_driver.h"
 
 static inline void delay(uint32_t delayms){
     __HAL_TIM_DISABLE_IT(&htim3, TIM_IT_UPDATE);
@@ -21,9 +21,10 @@ static inline void delay(uint32_t delayms){
 
 using namespace Protos;
 
-#define BLOCK_SIZE_FLASH    (FLASH_WRITE_BLOCK_SIZE)
-#define BYTES_IN_PACKET     (8)
-#define PACKETS_IN_BLOCK    (BLOCK_SIZE_FLASH/BYTES_IN_PACKET)
+#define BLOCK_SIZE_FLASH        (FLASH_WRITE_BLOCK_SIZE)
+#define BYTES_IN_PACKET         (8)
+#define PACKETS_IN_BLOCK        (BLOCK_SIZE_FLASH/BYTES_IN_PACKET)
+#define RESEND_PACKETS_N_TIMES  (8)
 
 class BootLoader : public BaseDevice{
 public:
@@ -62,7 +63,8 @@ public:
                     lastMissed = packetNum;
                 }
             }
-            reStartResendPacketsTimer();
+            if(resendNTimes++ >= RESEND_PACKETS_N_TIMES) stopResendPacketsTimer();
+            else reStartResendPacketsTimer();
             sendFCMessage(BOOT_FC_RESEND_PACKETS, firstMissed, lastMissed-firstMissed+1);
         }
     }
@@ -281,7 +283,8 @@ private:
         savedFamily = 0,
         savedHWVer = 0,
         savedFWVer = 0,
-        totalBlocks = 0;
+        totalBlocks = 0,
+        resendNTimes = 0;
 
     BOARD_ERROR currentError = NO_ERROR;
     [[noreturn]] static void errorHandler(BOARD_ERROR error){
@@ -308,6 +311,7 @@ private:
         __HAL_TIM_CLEAR_IT(&htim3, TIM_IT_UPDATE);
         TIM3->CNT = 0;
         HAL_TIM_Base_Stop_IT(&htim3);
+        resendNTimes = 0;
     }
 
     inline void stopStayInBootTimer(){
