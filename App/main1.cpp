@@ -7,11 +7,10 @@ void fdcan_init(){
 
 extern "C"
 {
-    uint8_t Address = 0xFF;
+    uint8_t Address = 0x0;
     uint8_t Family = 0x1;
     uint8_t HWVer = 0x1;
     uint8_t FWVer = 0x1;
-
     BootLoader bootLoader = BootLoader(DeviceUID::TYPE_MICROCHIP, Family, Address, &hfdcan1);
 
     void readEEPROM(){
@@ -25,13 +24,11 @@ extern "C"
     }
 
     void AppInit(void) {
-        readEEPROM();
 //        CpuInit();
         FlashInit();
         fdcan_init();
-        bootLoader.Poll();
-        bootLoader.init(FWVer, HWVer, calcUID());
-        bootLoader.Poll();
+        bootLoader.init(FWVer, HWVer);
+        readEEPROM();
     }
 
     void OnCANRx(FDCAN_RxHeaderTypeDef header, uint8_t* data)

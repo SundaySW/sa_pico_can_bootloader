@@ -16,9 +16,11 @@ add_library(${PROJECT_NAME}-Ext_libs OBJECT)
 target_include_directories(${PROJECT_NAME}-Ext_libs
         SYSTEM PUBLIC
         ${PROJECT_SOURCE_DIR}/Core/Inc
-        ${CMAKE_CURRENT_SOURCE_DIR}/protos_core_sa
-        ${CMAKE_CURRENT_SOURCE_DIR}/xt2_common
+        ${CMAKE_CURRENT_SOURCE_DIR}/protos_core
+        ${CMAKE_CURRENT_SOURCE_DIR}/protos_can_device
         ${CMAKE_CURRENT_SOURCE_DIR}/flash_driver
+        ${CMAKE_CURRENT_SOURCE_DIR}/sa_stm32_g4
+        ${CMAKE_CURRENT_SOURCE_DIR}/1Wire
         )
 
 target_compile_definitions(${PROJECT_NAME}-Ext_libs

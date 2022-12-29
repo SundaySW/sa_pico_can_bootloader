@@ -9,6 +9,9 @@
 #include "base_device.hpp"
 #include "main.h"
 #include "flash_driver.h"
+#include "eeprom.hpp"
+#include <cstring>
+
 
 static inline void delay(uint32_t delayms){
     __HAL_TIM_DISABLE_IT(&htim3, TIM_IT_UPDATE);
@@ -24,7 +27,7 @@ using namespace Protos;
 #define BLOCK_SIZE_FLASH        (FLASH_WRITE_BLOCK_SIZE)
 #define BYTES_IN_PACKET         (8)
 #define PACKETS_IN_BLOCK        (BLOCK_SIZE_FLASH/BYTES_IN_PACKET)
-#define RESEND_PACKETS_N_TIMES  (8)
+#define RESEND_PACKETS_N_TIMES  (3)
 
 class BootLoader : public BaseDevice{
 public:
@@ -35,11 +38,8 @@ public:
         savedAddress = addr;
     }
 
-    void init(uint8_t FWVer, uint8_t HWVer, uint32_t incomeUID){
-        UID = incomeUID;
-        Uid.Data.I4 = incomeUID;
-        savedFWVer = FWVer;
-        savedHWVer = HWVer;
+    void init(uint8_t FWVer, uint8_t HWVer){
+        readDatafromEEPROM();
         initDataStructures();
         startStayInBootTimer();
     }
@@ -170,7 +170,7 @@ protected:
         data[5] = resendPacketsLen;
         data[6] = (currentBlockNum & 0x00ff);
         data[7] = (currentBlockNum & 0xff00);
-        SendBootMsg (MSGTYPE_BOOT_FLOW, data, UID, 8);
+        SendBootMsg (MSGTYPE_BOOT_FLOW, data, 8);
     }
 
     void sendHelloFromBoot(){
@@ -183,8 +183,8 @@ protected:
         data[5] = 0xFF;
         data[6] = 0xFF;
         data[7] = 0xFF;
-        SendBootMsg (MSGTYPE_BOOT_ACK, data, UID, 8);
-        SendRawMsg (data, 8);
+        SendBootMsg (MSGTYPE_BOOT_ACK, data, 8);
+//        SendRawMsg (data, 8);
     }
 
     inline bool checkReceivedBlockCRC() const{
@@ -326,6 +326,23 @@ private:
         __HAL_TIM_CLEAR_IT(&htim3, TIM_IT_UPDATE);
         TIM3->CNT = 0;
         HAL_TIM_Base_Start_IT(&htim3);
+    }
+
+    inline void readDatafromEEPROM(){
+        char buffer[EEPROM_BOARD_DATA_SIZE];
+        int Offset = EEPROM_BOARD_DATA_ADDR;
+        int bufferOffset = 0;
+        eeprom_read_block(Offset, buffer, sizeof(buffer));
+        memcpy(&Uid.Data.I4, buffer, sizeof(Uid.Data.I4));
+        bufferOffset += sizeof(Uid.Data.I4);
+        savedAddress = buffer[bufferOffset];
+        bufferOffset += sizeof(savedAddress);
+        savedHWVer = buffer[bufferOffset];
+        bufferOffset += sizeof(savedHWVer);
+        savedFWVer = buffer[bufferOffset];
+
+        UID = Uid.Data.I1[3] + (Uid.Data.I1[2]<<8) + (Uid.Data.I1[1]<<16);
+        AssignAddress(savedAddress);
     }
 };
 
