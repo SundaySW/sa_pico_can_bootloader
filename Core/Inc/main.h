@@ -61,7 +61,7 @@ void Error_Handler(void);
 #define LED_1_GPIO_Port GPIOF
 /* USER CODE BEGIN Private defines */
 
-#define WAIT_TIME_IN_BOOT_SEC (8)
+#define WAIT_TIME_IN_BOOT_SEC (5)
 
 extern FDCAN_HandleTypeDef hfdcan1;
 enum BOARD_ERROR{

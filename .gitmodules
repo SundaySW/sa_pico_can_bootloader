@@ -7,6 +7,3 @@
 [submodule "Ext_libs/protos_can_device"]
 	path = Ext_libs/protos_can_device
 	url = https://github.com/reus-inc/protos_can_device
-[submodule "Ext_libs/1Wire"]
-	path = Ext_libs/1Wire
-	url = https://github.com/reus-inc/1Wire

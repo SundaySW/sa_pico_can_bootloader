@@ -27,14 +27,14 @@ static const tFlashSector flashLayout[] =
   /* { 0x08002800, 0x00800 },              flash sector  5 - reserved for bootloader   */
   /* { 0x08003000, 0x00800 },              flash sector  6 - reserved for bootloader   */
   /* { 0x08003800, 0x00800 },              flash sector  7 - reserved for bootloader   */
-//  { 0x08004000, 0x00800 },              /* flash sector  8 - 2kb                       */
-//  { 0x08004800, 0x00800 },              /* flash sector  9 - 2kb                       */
-//  { 0x08005000, 0x00800 },              /* flash sector 10 - 2kb                       */
-//  { 0x08005800, 0x00800 },              /* flash sector 11 - 2kb                       */
-//  { 0x08006000, 0x00800 },              /* flash sector 12 - 2kb                       */
-//  { 0x08006800, 0x00800 },              /* flash sector 13 - 2kb                       */
-//  { 0x08007000, 0x00800 },              /* flash sector 14 - 2kb                       */
-//  { 0x08007800, 0x00800 },              /* flash sector 15 - 2kb                       */
+  { 0x08004000, 0x00800 },              /* flash sector  8 - 2kb                       */
+  { 0x08004800, 0x00800 },              /* flash sector  9 - 2kb                       */
+  { 0x08005000, 0x00800 },              /* flash sector 10 - 2kb                       */
+  { 0x08005800, 0x00800 },              /* flash sector 11 - 2kb                       */
+  { 0x08006000, 0x00800 },              /* flash sector 12 - 2kb                       */
+  { 0x08006800, 0x00800 },              /* flash sector 13 - 2kb                       */
+  { 0x08007000, 0x00800 },              /* flash sector 14 - 2kb                       */
+  { 0x08007800, 0x00800 },              /* flash sector 15 - 2kb                       */
 #if (BOOT_FLASH_SIZE_KB > 32)
   { 0x08008000, 0x04000 },              /* flash sector 16 - 16kb                      */
   { 0x0800C000, 0x04000 },              /* flash sector 17 - 16kb                      */

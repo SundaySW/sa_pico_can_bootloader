@@ -11,6 +11,8 @@
 #include "flash_driver.h"
 #include "eeprom.hpp"
 #include <cstring>
+#include <eeprom_24aa02uid.hpp>
+#include "i2c.hpp"
 
 
 static inline void delay(uint32_t delayms){
@@ -28,25 +30,36 @@ using namespace Protos;
 #define BYTES_IN_PACKET         (8)
 #define PACKETS_IN_BLOCK        (BLOCK_SIZE_FLASH/BYTES_IN_PACKET)
 #define RESEND_PACKETS_N_TIMES  (3)
+#define EEPROM_I2C_ADDR 0x50
 
 class BootLoader : public BaseDevice{
 public:
-    BootLoader(DeviceUID::TYPE uidType, uint8_t family, uint8_t addr, FDCAN_HandleTypeDef* can)
-    : BaseDevice(uidType, family, addr, can)
+    BootLoader(DeviceUID::TYPE uidType, uint8_t family, uint8_t addr, FDCAN_HandleTypeDef* can, I2C_HandleTypeDef *i2c2)
+:       BaseDevice(uidType, family, addr, can)
+        ,I2CMaster(I2C(i2c2))
+        ,eeprom(&I2CMaster, EEPROM_I2C_ADDR)
     {
         savedFamily = family;
         savedAddress = addr;
     }
 
-    void init(uint8_t FWVer, uint8_t HWVer){
-        readDatafromEEPROM();
+    inline void readExternalEEPROM(){
+        uint8_t r_data[6] = {0};
+        eeprom.readUID(r_data);
+        memcpy(&Uid.Data.I4, r_data, sizeof(uint32_t));
+    }
+
+    void init(){
+        readInternalEEPROM();
+        readExternalEEPROM();
         initDataStructures();
+//        jumpToMainProg();
         startStayInBootTimer();
     }
 
     void OnTimer(int ms) override {}
-    inline void OnPoll() override{
-
+    inline void OnPoll() override {
+        if(jumpToProg) jumpToMainProg();
     }
 
     inline void jumpToMainProg(){
@@ -81,7 +94,7 @@ public:
                 } else unValidateBlock();
                 break;
             case MSGTYPE_BOOT_FLOW:
-                if(savedAddress == bootMsg.GetFlowMsgAddr()){
+                if(UID == bootMsg.GetMsgUID()){
                     if (bootMsg.GetFlowCMDCode() == BOOT_FC_FINISH_FLASH)
                         finishFlash(); //todo add finish flash on totalBlocks finish
                     else if (bootMsg.GetFlowCMDCode() == BOOT_FC_STAY_IN_BOOT) {
@@ -94,8 +107,6 @@ public:
             case MSGTYPE_BOOT_BOOTREQ:
                 if(UID == bootMsg.GetMsgUID())
                     sendHelloFromBoot();
-//                if(savedAddress == bootMsg.GetFlowMsgAddr())
-//                    sendHelloFromBoot();
                 break;
             default:
                 break;
@@ -105,9 +116,22 @@ public:
     void ProcessMessage(const Protos::Msg& msg) override{
     }
 
-    inline void sendHello(){
-        sendHelloFromBoot();
+    inline void stopStayInBootTimer(){
+        __HAL_TIM_CLEAR_IT(&htim1, TIM_IT_UPDATE);
+        HAL_TIM_Base_Stop_IT(&htim1);
     }
+
+    inline void stayInBootTimHandler(){
+        HAL_GPIO_TogglePin(LED_1_GPIO_Port, LED_1_Pin);
+        if(stayInBootTimer == (WAIT_TIME_IN_BOOT_SEC - 1))
+            sendHelloFromBoot();
+        if(stayInBootTimer <= 0) {
+            stopStayInBootTimer();
+            jumpToProg = true;
+        }
+        stayInBootTimer--;
+    };
+
 protected:
     inline void validateBlock(const Protos::BootMsg& bootMsg){
         uint16_t incomeBlockNum = bootMsg.GetAbsolutePacketNum() / BLOCK_SIZE_FLASH;
@@ -163,7 +187,7 @@ protected:
     inline void sendFCMessage(uint8_t flowCode, uint8_t resendPacketsFrom = 0x0, uint8_t resendPacketsLen = 0){
         char data[8] = {0};
         data[0] = Uid.Type;
-        data[1] = Address;
+        data[1] = savedAddress;
         data[2] = BOOT_FC_FLAG_FC;
         data[3] = flowCode;
         data[4] = resendPacketsFrom;
@@ -176,7 +200,7 @@ protected:
     void sendHelloFromBoot(){
         char data[8] = {0};
         data[0] = Uid.Type;
-        data[1] = Address;
+        data[1] = savedAddress;
         data[2] = savedFamily;
         data[3] = savedHWVer;
         data[4] = savedFWVer;
@@ -269,6 +293,8 @@ protected:
     }
 
 private:
+    I2C I2CMaster;
+    Eeprom24AAUID eeprom;
     uint16_t currentBlockNum = 0,
             nOKPackets = 0,
             currentBlockCRC = 0,
@@ -277,6 +303,7 @@ private:
     uint16_t correctPacketNums[PACKETS_IN_BLOCK] = {0xFFFF,};
     uint16_t expectedNOfPackets = 0;
     bool blockValidated = false;
+    bool jumpToProg = false;
 
     uint32_t UID = 0;
     uint8_t savedAddress = 0,
@@ -284,7 +311,8 @@ private:
         savedHWVer = 0,
         savedFWVer = 0,
         totalBlocks = 0,
-        resendNTimes = 0;
+        resendNTimes = 0,
+        stayInBootTimer = WAIT_TIME_IN_BOOT_SEC;
 
     BOARD_ERROR currentError = NO_ERROR;
     [[noreturn]] static void errorHandler(BOARD_ERROR error){
@@ -314,10 +342,6 @@ private:
         resendNTimes = 0;
     }
 
-    inline void stopStayInBootTimer(){
-        HAL_TIM_Base_Stop_IT(&htim1);
-    }
-
     inline void startStayInBootTimer(){
         HAL_TIM_Base_Start_IT(&htim1);
     }
@@ -328,7 +352,7 @@ private:
         HAL_TIM_Base_Start_IT(&htim3);
     }
 
-    inline void readDatafromEEPROM(){
+    inline void readInternalEEPROM(){
         char buffer[EEPROM_BOARD_DATA_SIZE];
         int Offset = EEPROM_BOARD_DATA_ADDR;
         int bufferOffset = 0;
@@ -342,7 +366,7 @@ private:
         savedFWVer = buffer[bufferOffset];
 
         UID = Uid.Data.I1[3] + (Uid.Data.I1[2]<<8) + (Uid.Data.I1[1]<<16);
-        AssignAddress(savedAddress);
+        Address = savedAddress;
     }
 };
 

@@ -47,7 +47,7 @@
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN PFP */
-
+extern void OnSysTickTimer();
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -190,7 +190,7 @@ void SysTick_Handler(void)
   /* USER CODE END SysTick_IRQn 0 */
   HAL_IncTick();
   /* USER CODE BEGIN SysTick_IRQn 1 */
-
+//  OnSysTickTimer();
   /* USER CODE END SysTick_IRQn 1 */
 }
 
